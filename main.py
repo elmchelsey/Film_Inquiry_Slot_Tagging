@@ -148,13 +148,26 @@ class SeqTagger(nn.Module):
         super().__init__()
 
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True, dropout=0.5)
-        self.fc = nn.Linear(hidden_dim, tagset_size)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True, dropout=0.5, bidirectional=True)
+        self.fc = nn.Linear(2 * hidden_dim, tagset_size)
 
     def forward(self, token_ids):
         embeddings = self.embedding(token_ids)  # (batch_size, seq_len, embedding_dim)
         rnn_out, _ = self.lstm(embeddings)  # (batch_size, seql_len, hidden_dim)
+
+        # Check the shape of rnn_out to handle both batch sizes > 1 and 1
+        if len(rnn_out.size()) == 3:  # (batch_size, seq_len, hidden_dim * 2)
+            batch_size, seq_len, _ = rnn_out.size()
+        elif len(rnn_out.size()) == 2:  # (1, seq_len, hidden_dim * 2) when batch_size=1
+            batch_size, seq_len = rnn_out.size(0), rnn_out.size(1)
+            rnn_out = rnn_out.unsqueeze(0)  # Add a batch dimension to maintain consistency
+
+        rnn_out = rnn_out.contiguous().view(batch_size * seq_len, -1)
+
         outputs = self.fc(rnn_out)  # (batch_size, seq_len, tagset_size)
+
+        outputs = outputs.view(batch_size, seq_len, -1)
+
         return outputs
     
 tag_counts = train_data["IOB Slot tags"].str.split().explode().value_counts()
@@ -286,15 +299,20 @@ def test_model_on_unseen_data(
             token_ids, tag_ids = test_dataset[idx]
             sample_id = test_data.iloc[idx]["ID"]
 
-
+            # Add batch dimension for single sequence processing
+            token_ids = token_ids.unsqueeze(0)
+            
             outputs = model(token_ids)
-            outputs = outputs.view(-1, outputs.shape[-1])
-            tag_ids = tag_ids.view(-1)
-
+            # Remove the reshape since model.forward now handles this
             predictions = outputs.argmax(dim=-1)
+            
+            # Get the predictions for the first (and only) sequence
+            predictions = predictions.squeeze(0)
+            
+            # Get valid predictions (non-padding)
             mask = tag_ids != test_dataset.tag_vocab["<PAD>"]
-
-            pred_labels = [id2tag[pred.item()] for pred in predictions]
+            
+            pred_labels = [id2tag[pred.item()] for pred, m in zip(predictions, mask) if m]
             pred_labels = [label if label != "<UNK>" else "O" for label in pred_labels]
 
             all_predictions.append(pred_labels)
