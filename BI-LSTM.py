@@ -111,7 +111,7 @@ EMBEDDING_DIM = 500
 HIDDEN_DIM = 128
 BATCH_SIZE = 128
 LEARNING_RATE = 0.001
-NUM_EPOCHS = 16
+NUM_EPOCHS = 30
 
 # Read the data and split it into training and validation sets
 data = pd.read_csv("hw2_train.csv")
