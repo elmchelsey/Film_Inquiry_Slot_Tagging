@@ -110,7 +110,7 @@ def collate_fn(batch):
 EMBEDDING_DIM = 800
 HIDDEN_DIM = 128
 BATCH_SIZE = 128
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.005
 NUM_EPOCHS = 20
 
 # Read the data and split it into training and validation sets
@@ -136,7 +136,7 @@ unique_tags = np.array(
 class_weights = compute_class_weight(
     class_weight="balanced", classes=unique_tags, y=y_train_cleaned
 )
-weights_tensor = torch.ones(len(train_dataset.tag_vocab), dtype=torch.float)
+weights_tensor = torch.ones(len(train_dataset.tag_vocab), dtype=torch.float) + 0.1
 
 train_loader = DataLoader(
     train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn
