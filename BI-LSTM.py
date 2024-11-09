@@ -109,9 +109,9 @@ def collate_fn(batch):
 # Tuneable Hyperparameters
 EMBEDDING_DIM = 500
 HIDDEN_DIM = 128
-BATCH_SIZE = 256
-LEARNING_RATE = 0.005
-NUM_EPOCHS = 15
+BATCH_SIZE = 128
+LEARNING_RATE = 0.001
+NUM_EPOCHS = 16
 
 # Read the data and split it into training and validation sets
 data = pd.read_csv("hw2_train.csv")
@@ -259,10 +259,14 @@ def train_and_validate(model, train_loader, val_loader, optimizer, loss_fn):
 
                     all_predictions.append(pred_labels)
                     all_tags.append(true_labels)
+                    
 
         # Compute train and validation loss
         train_loss = total_train_loss / len(train_loader)
         val_loss = total_val_loss / len(val_loader)
+
+        f1 = f1_score(all_tags, all_predictions, average="macro")
+        print(f"{epoch = } | train_loss = {train_loss:.3f} | val_loss = {val_loss:.3f} | f1 = {f1:.3f}")
 
     # Calculate F1 score with sequences of IOB labels
     print(classification_report(all_tags, all_predictions))
