@@ -154,7 +154,7 @@ class SeqTagger(nn.Module):
     def forward(self, token_ids):
         embeddings = self.embedding(token_ids)  # (batch_size, seq_len, embedding_dim)
         rnn_out, _ = self.lstm(embeddings)  # (batch_size, seql_len, hidden_dim)
-
+    
         # Check the shape of rnn_out to handle both batch sizes > 1 and 1
         if len(rnn_out.size()) == 3:  # (batch_size, seq_len, hidden_dim * 2)
             batch_size, seq_len, _ = rnn_out.size()
@@ -169,6 +169,10 @@ class SeqTagger(nn.Module):
         outputs = outputs.view(batch_size, seq_len, -1)
 
         return outputs
+    
+    def predict(self, token_ids):
+        emissions = self.forward(token_ids)
+        return self.crf.decode(emissions)
     
 tag_counts = train_data["IOB Slot tags"].str.split().explode().value_counts()
 all_tags = list(train_dataset.tag_vocab.keys())  # Get all tags including special tokens
