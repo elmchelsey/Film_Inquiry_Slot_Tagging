@@ -107,7 +107,7 @@ def collate_fn(batch):
     return padded_sentences, padded_tags
 
 # Tuneable Hyperparameters
-EMBEDDING_DIM = 500
+EMBEDDING_DIM = 1000
 HIDDEN_DIM = 128
 BATCH_SIZE = 32
 LEARNING_RATE = 0.001
