@@ -109,7 +109,7 @@ def collate_fn(batch):
 # Tuneable Hyperparameters
 EMBEDDING_DIM = 500
 HIDDEN_DIM = 128
-BATCH_SIZE = 64
+BATCH_SIZE = 256
 LEARNING_RATE = 0.005
 NUM_EPOCHS = 15
 
