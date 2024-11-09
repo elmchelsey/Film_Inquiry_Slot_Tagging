@@ -107,10 +107,10 @@ def collate_fn(batch):
     return padded_sentences, padded_tags
 
 # Tuneable Hyperparameters
-EMBEDDING_DIM = 1000
+EMBEDDING_DIM = 500
 HIDDEN_DIM = 128
-BATCH_SIZE = 32
-LEARNING_RATE = 0.001
+BATCH_SIZE = 64
+LEARNING_RATE = 0.005
 NUM_EPOCHS = 15
 
 # Read the data and split it into training and validation sets
@@ -264,8 +264,8 @@ def train_and_validate(model, train_loader, val_loader, optimizer, loss_fn):
         train_loss = total_train_loss / len(train_loader)
         val_loss = total_val_loss / len(val_loader)
 
-        # Calculate F1 score with sequences of IOB labels
-        print(classification_report(all_tags, all_predictions))
+    # Calculate F1 score with sequences of IOB labels
+    print(classification_report(all_tags, all_predictions))
 
 
     incorrect_df = pd.DataFrame(incorrect_predictions)
