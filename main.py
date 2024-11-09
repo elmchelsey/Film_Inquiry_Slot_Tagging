@@ -1,5 +1,6 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_class_weight
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -110,6 +111,15 @@ NUM_EPOCHS = 15
 data = pd.read_csv("hw2_train.csv")
 train_data, val_data = train_test_split(data, test_size=0.1, random_state=seed)
 
+unique_tags = data["IOB Slot tags"].str.split().explode().unique()
+
+exclude_tags = ["<PAD>", "<UNK>"]
+unique_tags = np.array([tag for tag in unique_tags if tag not in exclude_tags])
+
+y_train = train_data["IOB Slot tags"].str.split().explode().values
+y_train_cleaned = [tag for tag in y_train if tag not in exclude_tags]
+
+
 # Create separate datasets
 train_dataset = IOB_Dataset(data=train_data, training=True)
 val_dataset = IOB_Dataset(
@@ -146,6 +156,17 @@ class SeqTagger(nn.Module):
         rnn_out, _ = self.lstm(embeddings)  # (batch_size, seql_len, hidden_dim)
         outputs = self.fc(rnn_out)  # (batch_size, seq_len, tagset_size)
         return outputs
+    
+tag_counts = train_data["IOB Slot tags"].str.split().explode().value_counts()
+all_tags = list(train_dataset.tag_vocab.keys())  # Get all tags including special tokens
+weights = torch.ones(len(train_dataset.tag_vocab))  # Initialize weights for all classes
+
+# Calculate weights for non-special tokens
+unique_tag_weights = compute_class_weight(
+    class_weight='balanced', 
+    classes=unique_tags, 
+    y=y_train_cleaned
+)
 
 model = SeqTagger(
     vocab_size=len(train_dataset.token_vocab),
@@ -153,7 +174,7 @@ model = SeqTagger(
     embedding_dim=EMBEDDING_DIM,
     hidden_dim=HIDDEN_DIM,
 )
-loss_fn = nn.CrossEntropyLoss(ignore_index=train_dataset.tag_vocab["<PAD>"])
+loss_fn = nn.CrossEntropyLoss(ignore_index=train_dataset.tag_vocab["<PAD>"], weight=weights)
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
 '''
