@@ -105,7 +105,7 @@ EMBEDDING_DIM = 500
 HIDDEN_DIM = 128
 BATCH_SIZE = 32
 LEARNING_RATE = 0.001
-NUM_EPOCHS = 15
+NUM_EPOCHS = 200
 
 data = pd.read_csv("hw2_train.csv")
 train_data, val_data = train_test_split(data, test_size=0.1, random_state=seed)
