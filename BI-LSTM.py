@@ -133,10 +133,13 @@ val_dataset = IOB_Dataset(
 unique_tags = np.array(
     [tag for tag in train_dataset.tag_vocab.keys() if tag not in ["<PAD>", "<UNK>"]]
 )
-class_weights = compute_class_weight(
-    class_weight="balanced", classes=unique_tags, y=y_train_cleaned
-)
-weights_tensor = torch.ones(len(train_dataset.tag_vocab), dtype=torch.float) + 0.1
+
+median_freq = np.median([y_train_cleaned.count(tag) for tag in unique_tags])
+
+#class_weights = compute_class_weight(class_weight="balanced", classes=unique_tags, y=y_train_cleaned)
+class_weights = [median_freq / train_dataset.tag_vocab[tag] for tag in unique_tags]
+
+weights_tensor = torch.ones(len(train_dataset.tag_vocab), dtype=torch.float)
 
 train_loader = DataLoader(
     train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn
@@ -268,8 +271,8 @@ def train_and_validate(model, train_loader, val_loader, optimizer, loss_fn):
         f1 = f1_score(all_tags, all_predictions, average="macro")
         print(f"{epoch = } | train_loss = {train_loss:.3f} | val_loss = {val_loss:.3f} | f1 = {f1:.3f}")
 
-    # Calculate F1 score with sequences of IOB labels
-    print(classification_report(all_tags, all_predictions))
+        # Calculate F1 score with sequences of IOB labels
+        print(classification_report(all_tags, all_predictions))
 
 
     incorrect_df = pd.DataFrame(incorrect_predictions)
