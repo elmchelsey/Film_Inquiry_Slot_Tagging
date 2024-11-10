@@ -1,6 +1,7 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
+from sklearn.utils import resample
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -115,7 +116,21 @@ NUM_EPOCHS = 10
 
 # Read the data and split it into training and validation sets
 data = pd.read_csv("hw2_train.csv")
+rare_tags = ["B_cast", "I_cast", "B_char", "I_char", "B_release_year", "I_release_year"]
+
 train_data, val_data = train_test_split(data, test_size=0.1, random_state=seed)
+
+# Identify sequences containing rare labels
+rare_sequences = train_data[train_data["IOB Slot tags"].str.contains('|'.join(rare_tags))]
+desired_num_samples = 300
+# Duplicate sequences containing rare labels
+oversampled_rare_sequences = resample(rare_sequences, 
+                                      replace=True, 
+                                      n_samples=desired_num_samples,  # adjust based on imbalance
+                                      random_state=seed)
+
+train_data = pd.concat([train_data, oversampled_rare_sequences])
+
 y_train = train_data["IOB Slot tags"].str.split().explode()
 y_train_cleaned = [tag for tag in y_train if tag not in ["<PAD>", "<UNK>"]]
 
@@ -134,10 +149,8 @@ unique_tags = np.array(
     [tag for tag in train_dataset.tag_vocab.keys() if tag not in ["<PAD>", "<UNK>"]]
 )
 
-median_freq = np.median([y_train_cleaned.count(tag) for tag in unique_tags])
 
-#class_weights = compute_class_weight(class_weight="balanced", classes=unique_tags, y=y_train_cleaned)
-class_weights = [median_freq / train_dataset.tag_vocab[tag] for tag in unique_tags]
+class_weights = compute_class_weight(class_weight="balanced", classes=unique_tags, y=y_train_cleaned)
 
 weights_tensor = torch.ones(len(train_dataset.tag_vocab), dtype=torch.float)
 
