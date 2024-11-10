@@ -122,7 +122,7 @@ train_data, val_data = train_test_split(data, test_size=0.1, random_state=seed)
 
 # Identify sequences containing rare labels
 rare_sequences = train_data[train_data["IOB Slot tags"].str.contains('|'.join(rare_tags))]
-desired_num_samples = 300
+desired_num_samples = 200
 # Duplicate sequences containing rare labels
 oversampled_rare_sequences = resample(rare_sequences, 
                                       replace=True, 
@@ -284,8 +284,8 @@ def train_and_validate(model, train_loader, val_loader, optimizer, loss_fn):
         f1 = f1_score(all_tags, all_predictions, average="macro")
         print(f"{epoch = } | train_loss = {train_loss:.3f} | val_loss = {val_loss:.3f} | f1 = {f1:.3f}")
 
-        # Calculate F1 score with sequences of IOB labels
-        print(classification_report(all_tags, all_predictions))
+    # Calculate F1 score with sequences of IOB labels
+    print(classification_report(all_tags, all_predictions))
 
 
     incorrect_df = pd.DataFrame(incorrect_predictions)
