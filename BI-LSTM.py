@@ -120,16 +120,16 @@ rare_tags = ["B_cast", "I_cast", "B_char", "I_char", "B_release_year", "I_releas
 
 train_data, val_data = train_test_split(data, test_size=0.1, random_state=seed)
 
-# Identify sequences containing rare labels
-rare_sequences = train_data[train_data["IOB Slot tags"].str.contains('|'.join(rare_tags))]
-desired_num_samples = 200
-# Duplicate sequences containing rare labels
-oversampled_rare_sequences = resample(rare_sequences, 
-                                      replace=True, 
-                                      n_samples=desired_num_samples,  # adjust based on imbalance
-                                      random_state=seed)
+# # Identify sequences containing rare labels
+# rare_sequences = train_data[train_data["IOB Slot tags"].str.contains('|'.join(rare_tags))]
+# desired_num_samples = 200
+# # Duplicate sequences containing rare labels
+# oversampled_rare_sequences = resample(rare_sequences, 
+#                                       replace=True, 
+#                                       n_samples=desired_num_samples,  # adjust based on imbalance
+#                                       random_state=seed)
 
-train_data = pd.concat([train_data, oversampled_rare_sequences])
+# train_data = pd.concat([train_data, oversampled_rare_sequences])
 
 y_train = train_data["IOB Slot tags"].str.split().explode()
 y_train_cleaned = [tag for tag in y_train if tag not in ["<PAD>", "<UNK>"]]
@@ -195,7 +195,7 @@ model = SeqTagger(
     hidden_dim=HIDDEN_DIM,
 )
 loss_fn = nn.CrossEntropyLoss(
-    ignore_index=train_dataset.tag_vocab["<PAD>"], weight=weights_tensor
+    ignore_index=train_dataset.tag_vocab["<PAD>"]
 )
 optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 
@@ -265,6 +265,7 @@ def train_and_validate(model, train_loader, val_loader, optimizer, loss_fn):
                     ]
                     true_labels = [id2tag[t] for t, m in zip(true_seq, mask) if m]
 
+
                     # If the predicted and true labels are different, add them to the incorrect predictions to be saved
                     if pred_labels != true_labels:
                         for i in range(len(pred_labels)):
@@ -272,6 +273,8 @@ def train_and_validate(model, train_loader, val_loader, optimizer, loss_fn):
                                 incorrect_predictions.append(
                                     {"Predicted": pred_labels[i], "True": true_labels[i]}
                                 )
+
+
 
                     all_predictions.append(pred_labels)
                     all_tags.append(true_labels)
@@ -326,7 +329,20 @@ def test_model_on_unseen_data(
             pred_labels = [id2tag[pred.item()] for pred in predictions]
             pred_labels = [label if label != "<UNK>" else "O" for label in pred_labels]
 
-            all_predictions.append(pred_labels)
+            fixed_sequence = []
+            previous_tag = "O"
+
+            for tag in pred_labels:
+                # If there is an I_tag that is not preceded by the correct B_tag, replace it with a B_cat tag
+                if tag.startswith('I_') and not previous_tag.endswith(tag[2:]):
+                    fixed_sequence.append("B_" + tag[2:])
+                else:
+                    fixed_sequence.append(tag)
+                            
+                if tag != "O":
+                    previous_tag = tag
+
+            all_predictions.append(fixed_sequence)
             all_ids.append(sample_id)
 
     output = []
