@@ -112,7 +112,7 @@ EMBEDDING_DIM = 800
 HIDDEN_DIM = 128
 BATCH_SIZE = 128
 LEARNING_RATE = 0.005
-NUM_EPOCHS = 30
+NUM_EPOCHS = 20
 
 # Read the data and split it into training and validation sets
 data = pd.read_csv("hw2_train.csv")
@@ -197,7 +197,7 @@ model = SeqTagger(
 loss_fn = nn.CrossEntropyLoss(
     ignore_index=train_dataset.tag_vocab["<PAD>"], weight=weights_tensor
 )
-optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 
 """
 Train and validate the model
