@@ -107,12 +107,13 @@ def collate_fn(batch):
 
     return padded_sentences, padded_tags
 
+
 # Tuneable Hyperparameters
-EMBEDDING_DIM = 800
+EMBEDDING_DIM = 500
 HIDDEN_DIM = 128
 BATCH_SIZE = 128
 LEARNING_RATE = 0.005
-NUM_EPOCHS = 20
+NUM_EPOCHS = 30
 
 # Read the data and split it into training and validation sets
 data = pd.read_csv("hw2_train.csv")
@@ -120,16 +121,20 @@ rare_tags = ["B_cast", "I_cast", "B_char", "I_char", "B_release_year", "I_releas
 
 train_data, val_data = train_test_split(data, test_size=0.1, random_state=seed)
 
-# # Identify sequences containing rare labels
-# rare_sequences = train_data[train_data["IOB Slot tags"].str.contains('|'.join(rare_tags))]
-# desired_num_samples = 200
-# # Duplicate sequences containing rare labels
-# oversampled_rare_sequences = resample(rare_sequences, 
-#                                       replace=True, 
-#                                       n_samples=desired_num_samples,  # adjust based on imbalance
-#                                       random_state=seed)
+# Identify sequences containing rare labels
+rare_sequences = train_data[
+    train_data["IOB Slot tags"].str.contains("|".join(rare_tags))
+]
+desired_num_samples = 200
+# Duplicate sequences containing rare labels
+oversampled_rare_sequences = resample(
+    rare_sequences,
+    replace=True,
+    n_samples=desired_num_samples,  # adjust based on imbalance
+    random_state=seed,
+)
 
-# train_data = pd.concat([train_data, oversampled_rare_sequences])
+train_data = pd.concat([train_data, oversampled_rare_sequences])
 
 y_train = train_data["IOB Slot tags"].str.split().explode()
 y_train_cleaned = [tag for tag in y_train if tag not in ["<PAD>", "<UNK>"]]
@@ -150,7 +155,9 @@ unique_tags = np.array(
 )
 
 
-class_weights = compute_class_weight(class_weight="balanced", classes=unique_tags, y=y_train_cleaned)
+class_weights = compute_class_weight(
+    class_weight="balanced", classes=unique_tags, y=y_train_cleaned
+)
 
 weights_tensor = torch.ones(len(train_dataset.tag_vocab), dtype=torch.float)
 
@@ -195,9 +202,9 @@ model = SeqTagger(
     hidden_dim=HIDDEN_DIM,
 )
 loss_fn = nn.CrossEntropyLoss(
-    ignore_index=train_dataset.tag_vocab["<PAD>"]
+    ignore_index=train_dataset.tag_vocab["<PAD>"], weight=weights_tensor
 )
-optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE)
+optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
 """
 Train and validate the model
@@ -233,7 +240,7 @@ def train_and_validate(model, train_loader, val_loader, optimizer, loss_fn):
         all_tags = []
 
         # Create reverse mapping for tag IDs to labels
-        id2tag = {v: k for k, v in train_dataset.tag_vocab.items()} #{index:tag}
+        id2tag = {v: k for k, v in train_dataset.tag_vocab.items()}  # {index:tag}
 
         with torch.no_grad():
             for token_ids, tag_ids in val_loader:
@@ -265,31 +272,31 @@ def train_and_validate(model, train_loader, val_loader, optimizer, loss_fn):
                     ]
                     true_labels = [id2tag[t] for t, m in zip(true_seq, mask) if m]
 
-
                     # If the predicted and true labels are different, add them to the incorrect predictions to be saved
                     if pred_labels != true_labels:
                         for i in range(len(pred_labels)):
                             if pred_labels[i] != true_labels[i]:
                                 incorrect_predictions.append(
-                                    {"Predicted": pred_labels[i], "True": true_labels[i]}
+                                    {
+                                        "Predicted": pred_labels[i],
+                                        "True": true_labels[i],
+                                    }
                                 )
-
-
 
                     all_predictions.append(pred_labels)
                     all_tags.append(true_labels)
-                    
 
         # Compute train and validation loss
         train_loss = total_train_loss / len(train_loader)
         val_loss = total_val_loss / len(val_loader)
 
         f1 = f1_score(all_tags, all_predictions, average="macro")
-        print(f"{epoch = } | train_loss = {train_loss:.3f} | val_loss = {val_loss:.3f} | f1 = {f1:.3f}")
+        print(
+            f"{epoch = } | train_loss = {train_loss:.3f} | val_loss = {val_loss:.3f} | f1 = {f1:.3f}"
+        )
 
     # Calculate F1 score with sequences of IOB labels
     print(classification_report(all_tags, all_predictions))
-
 
     incorrect_df = pd.DataFrame(incorrect_predictions)
     incorrect_df.to_csv("incorrect_predictions.csv", index=False)
@@ -334,11 +341,11 @@ def test_model_on_unseen_data(
 
             for tag in pred_labels:
                 # If there is an I_tag that is not preceded by the correct B_tag, replace it with a B_cat tag
-                if tag.startswith('I_') and not previous_tag.endswith(tag[2:]):
+                if tag.startswith("I_") and not previous_tag.endswith(tag[2:]):
                     fixed_sequence.append("B_" + tag[2:])
                 else:
                     fixed_sequence.append(tag)
-                            
+
                 if tag != "O":
                     previous_tag = tag
 
